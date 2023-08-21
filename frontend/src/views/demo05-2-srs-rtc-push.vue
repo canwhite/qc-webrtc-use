@@ -80,6 +80,7 @@ export default {
   },
   created() {
 	  if(getParams("userId")){
+		//初始化
 	  	this.init(getParams("userId"),getParams("roomId"),getParams('userId'))
 	  }
   },
@@ -108,8 +109,10 @@ export default {
 	  		console.log("roomUserList",e)
 	  		that.roomUserList = e					
 	  	})
+		
 	  	this.linkSocket.on("msg",async (e)=>{
 	  		console.log("msg",e)
+			//如果收到消息的时候如何处理
 	  		if(e['type'] === 'applyMic'){
 				//自动同意
 				let params ={	"userId": getParams('userId'),"targetUid":e.data.userId}
@@ -121,17 +124,23 @@ export default {
 	  	this.linkSocket.on("error",(e)=>{
 	  		console.log("error",e)
 	  	})
-	  },
+	   },
+	   //推流方法
 	   async play(){
 		   if(!this.localstream){
 			   this.localstream = await this.getLocalUserMedia(null,null)
 		   }
+		   //拿到localstream去操作
 		   await this.setDomVideoStream('videoElement',this.localstream)
+		   //推流
 		   await this.getPushSdp(this.streamId,this.localstream)
 	   },
+
+
 	   async setDomVideoStream(domId,newStream){
 			let video = document.getElementById(domId)
 			let stream = video.srcObject
+			//如果之前有就先刷新删除重新加
 			if(stream){
 				stream.getTracks().forEach(e => e.stop())
 			}
@@ -139,6 +148,8 @@ export default {
 			video.muted = true
 			video.autoplay=true
 	   },
+
+
 	   async getLocalUserMedia(audioId,videoId){
 	   	const constraints = {
 	   	    audio: {deviceId: audioId ? {exact: audioId} : undefined},
@@ -156,27 +167,41 @@ export default {
 	   	}
 	       return await navigator.mediaDevices.getUserMedia(constraints).catch(handleError)
 	   },
+	   //推流
+	   //sdp是会话描述协议的意思
 	   async getPushSdp(streamId,stream){
 			const that = this
+			//创建pc
 			that.pc = await new PeerConnection(null);
+			
+			//通过指定传输通道的方向，可以灵活地控制音频和视频在WebRTC连接中的传输行为。
+			//在这种情况下，代码表明创建的PeerConnection对象只用于将音频和视频数据发送给对等端，而不接收任何音频或视频数据。
 			that.pc.addTransceiver("audio", {direction: "sendonly"});
 			that.pc.addTransceiver("video", {direction: "sendonly"});
-			//send
+			//总之，getTracks()方法用于获取MediaStream对象中的所有轨道，
+			//而addTrack()方法用于将轨道添加到PeerConnection中，确保在建立连接后能够传输相应的音频和视频数据。
 			stream.getTracks().forEach(function (track) {
 				that.pc.addTrack(track);
 			});
+			//然后写个offer
 			let offer = await that.pc.createOffer();
+			//加上本地描述
 			await that.pc.setLocalDescription(offer)
+
+			//send
+			//需要一个Api接口，
 			let data = {
 			  "api": this.$srsServerAPIURL+"rtc/v1/publish/",
 			  "streamurl": this.$srsServerRTCURL+streamId,
 			  "sdp": offer.sdp
 			}
+			
 			axios.post(this.$srsServerAPIURL+'rtc/v1/publish/',data)
 			.then( async res => {
 				res = res.data
 				console.log(res)
 				if(res.code === 0){
+					//接到远端消息的时候
 					await that.pc.setRemoteDescription(new RTCSessionDescription({type: 'answer', sdp: res.sdp}))
 					//按照给是组装flv和hls点播地址 （SRS官网指定格式）
 					that.scanUrlFlv = that.$srsServerFlvURL+streamId+'.flv'
@@ -191,9 +216,12 @@ export default {
 				this.$message.error("推流异常，请检查流媒体服务器")
 			})
 	   },
+
+	   //
 	   preLive(){
 		   this.$refs['srsRtcPullPreview'].getPullSdp(this.streamId)
 	   },
+
 	   videoControl(b){
 		   if(this.pc){
 			  this.videoStatus = !this.videoStatus  
