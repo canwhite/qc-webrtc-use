@@ -1,0 +1,14 @@
+# 这里之前有一个版本参数，删除了
+# version
+services:
+  janus-gateway:
+    image: 'sucwangsr/janus-webrtc-gateway-docker:20221018'
+    command: ["/usr/local/bin/janus", "-F", "/usr/local/etc/janus"]
+    network_mode: "host"
+    volumes:
+      - "/home/janus-docker/conf/janus.transport.http.jcfg:/usr/local/etc/janus/janus.transport.http.jcfg" 
+      - "/home/janus-docker/conf/janus.jcfg:/usr/local/etc/janus/janus.jcfg"
+      - "/home/janus-docker/record:/home/janus-gateway/record"
+      - "/home/janus-docker/ssl:/home/ssl"
+    restart: always
+
