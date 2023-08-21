@@ -175,7 +175,9 @@ export default {
 			that.pc = await new PeerConnection(null);
 			
 			//通过指定传输通道的方向，可以灵活地控制音频和视频在WebRTC连接中的传输行为。
-			//在这种情况下，代码表明创建的PeerConnection对象只用于将音频和视频数据发送给对等端，而不接收任何音频或视频数据。
+			//在这种情况下，代码表明创建的PeerConnection对象只用于将音频和视频数据发送给对等端，
+			//而不接收任何音频或视频数据。
+			//是一种对对方说明状态的行为
 			that.pc.addTransceiver("audio", {direction: "sendonly"});
 			that.pc.addTransceiver("video", {direction: "sendonly"});
 			//总之，getTracks()方法用于获取MediaStream对象中的所有轨道，
@@ -217,11 +219,12 @@ export default {
 			})
 	   },
 
-	   //
+	   //推流
 	   preLive(){
 		   this.$refs['srsRtcPullPreview'].getPullSdp(this.streamId)
 	   },
 
+	   //视频控制
 	   videoControl(b){
 		   if(this.pc){
 			  this.videoStatus = !this.videoStatus  
@@ -232,33 +235,48 @@ export default {
 			   this.$message.error("请先点击推流")
 		   }
 	   },
+
+	   //音频控制
 	   audioControl(b){
 		   if(this.pc){
 			   console.log(this.pc)
 			   this.audioStatus = !this.audioStatus 
 			  const senders = this.pc.getSenders();
 			  const send = senders.find((s) => s.track.kind === 'audio')
+			  //注意这里是send.轨道，sender也是个容器对象
 			  send.track.enabled = b 
 		   }else{
 			   this.$message.error("请先点击推流")
 		   }
 	   },
+
+
+	   //分享操作
 	   async getShareMedia(){
 	   	const constraints = {
 	   		video:{width:1920,height:1080},
 	   		audio:false
 	   	};
+		
 	   	return await navigator.mediaDevices.getDisplayMedia(constraints).catch(handleError);
 	   },
+
+
 	   async changeVideo(){
+		   //点击推流的时候会新建pc
 		   if(!this.pc){
 			   this.$message.error("请先点击推流")
 			   return
 		   }
+		   //拿到分享流
 		   this.shareStream = await this.getShareMedia()
+		   //从stream容器中拿到video tracks
 		   const [videoTrack] = this.shareStream.getVideoTracks();
+		   //然后从pc中拿到发送者们
 		   const senders = this.pc.getSenders();
+		   //找到video发送
 		   const send = senders.find((s) => s.track.kind === 'video')
+		   //使用replace，切换轨道
 		   send.replaceTrack(videoTrack)
 		   this.shareStatus = true
 	   },

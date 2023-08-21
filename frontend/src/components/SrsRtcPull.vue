@@ -39,6 +39,7 @@ export default {
 		}
 		that.pc = await new PeerConnection(null);
 		//注意，这里参数是接收
+		//除了sendonly，receonly，还有sendrecv和inactive
 		that.pc.addTransceiver("audio", {direction: "recvonly"});
 		that.pc.addTransceiver("video", {direction: "recvonly"});
 		//如果拿到轨道数据，就set
