@@ -60,7 +60,6 @@ export default {
   },
   methods:{
 	  initRoom(){
-		  console.log(this.$refs)
 		  if(this.liveRoomId && this.$refs['srsRtcPullLiveRoom']){
 		  	this.$refs['srsRtcPullLiveRoom'].getPullSdp(this.liveRoomId)
 		  }
@@ -133,7 +132,7 @@ export default {
 			await that.pc.setLocalDescription(offer)
 			let data = {
 			  "api": this.$srsServerAPIURL+"rtc/v1/publish/",
-			  "streamurl": this.$srsServerRTCURL+streamId,
+			  "streamurl": this.$srsServerRTCURL+"3456",
 			  "sdp": offer.sdp
 			}
 			axios.post(this.$srsServerAPIURL+'rtc/v1/publish/',data)
@@ -151,6 +150,7 @@ export default {
 				this.$message.error("推流异常，请检查流媒体服务器")
 			})
 	  },
+	  //小的显示的是本地的
 	  async play(){
 		   if(!this.localstream){
 			   this.localstream = await this.getLocalUserMedia(null,null)

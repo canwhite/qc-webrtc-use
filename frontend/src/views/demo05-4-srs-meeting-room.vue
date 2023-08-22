@@ -179,47 +179,57 @@ export default {
 	  }
   },
   created() {
-	  const that = this
-		 initInnerLocalDevice()
-		 this.localDevice = localDevice
-		 console.log(localDevice)
-		 let usession = window.sessionStorage.getItem("userInfo")
-		 if(usession){
-			 usession = JSON.parse(usession)
-			 this.formInline = usession
-		 }else{
-			 this.formInline.nickname = getParams("nickname");
-			 this.formInline.roomId = getParams("roomId");
-			 this.formInline.userId = getParams("userId");
-		 }
-		 fpPromise
-			 .then(fp => fp.get())
-			 .then(result => {
-				 if(!this.formInline.userId){
-					 this.formInline.userId = result.visitorId
-				 }
-			  })
+		const that = this
+		initInnerLocalDevice()
+		this.localDevice = localDevice
+		console.log(localDevice)
+		let usession = window.session
+		//讲userInfo存了一份
+		Storage.getItem("userInfo")
+		if(usession){
+			usession = JSON.parse(usession)
+			this.formInline = usession
+		}else{
+			this.formInline.nickname = getParams("nickname");
+			this.formInline.roomId = getParams("roomId");
+			this.formInline.userId = getParams("userId");
+		}
+		//获取指纹作为userId，后面推流就依赖这个 ID 去推流
+		fpPromise
+			.then(fp => fp.get())
+			.then(result => {
+				if(!this.formInline.userId){
+					this.formInline.userId = result.visitorId
+				}
+			})
   },
   methods:{
+	//加入之后显示一个
+	/** 
+	 * 新用户加入到会议室后，还要发布自己的媒体流到 MCU 服务器，
+	 * 也就是 SRS 中，这样其他用户就可以通过新用户的 ID 从 SRS 中拉取媒体流。
+	 */
 	joinRoom(formName){
-	this.$refs[formName].validate((valid) => {
-		  if (valid) {
-			this.init()
-			window.sessionStorage.setItem("userInfo",JSON.stringify(this.formInline))
-		  } else {
-			console.log('error submit!!');
-			return false;
-		  }
+		this.$refs[formName].validate((valid) => {
+			if (valid) {
+				this.init()
+				window.sessionStorage.setItem("userInfo",JSON.stringify(this.formInline))
+			} else {
+				console.log('error submit!!');
+				return false;
+			}
 		});
 	},
 	init(){
 		const that = this
 		console.log("server",this.$serverSocketUrl);
+		//连接socket
 		this.linkSocket = io(this.$serverSocketUrl, {
 			reconnectionDelayMax: 10000,
 			transports: ["websocket"],
 			query: that.formInline
 		});
+
 		this.linkSocket.on("connect",async (e)=>{
 			console.log("server init connect success",that.linkSocket)
 			that.centerDialogVisible = false //加入后
@@ -227,6 +237,8 @@ export default {
 			that.linkSocket.emit('roomUserList',{roomId:that.formInline.roomId})
 			
 		})
+
+		//监听房间用户列表 （新用户加入房间后首先会发送房间列表回调事件，等拿到用户列表后再开始初始化会议室）
 		this.linkSocket.on("roomUserList",(e)=>{
 			console.log("roomUserList",e)
 			that.roomUserList = e;
@@ -237,12 +249,15 @@ export default {
 			if(e['type'] === 'join' || e['type'] === 'leave'){
 				const userId = e['data']['userId']
 				const nickname = e['data']['nickname']
+				//对于已经入会的人员，新人入会监听
 				if(e['type'] === 'join'){
 					that.$message.success(nickname+" 加入房间")
+					//数组push新用户元素 同时页面会生成对应 DOM
 					that.others.push({
 						userId:userId,
 						nickname:nickname
 					})
+					//拉新入流
 					await that.getPullSdp(userId)
 				}else{
 					that.$message.success(nickname+" 离开房间")
@@ -262,7 +277,7 @@ export default {
 		}
 		//本地预览自己的画面
 		this.setDomVideoStream("localMediaDom",this.localStream);
-		//推流
+		//推自己流
 		await this.getPushSdp(this.formInline.userId,this.localStream);
 		//判断房间内是否有其他人
 		this.others = this.roomUserList.filter(e => e.userId != this.formInline.userId)

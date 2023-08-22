@@ -70,7 +70,7 @@ export default {
 		  flv:'',
 		  pc:undefined,
 		  localstream:undefined,
-		  streamId:'localStream-'+Date.now(),
+		  streamId:"localStream-1673368291508",
 		  scanUrlFlv:undefined,
 		  scanUrlHls:undefined,
 		  videoStatus:true,
@@ -117,8 +117,10 @@ export default {
 				//自动同意
 				let params ={	"userId": getParams('userId'),"targetUid":e.data.userId}
 				that.linkSocket.emit('acceptApplyMic',params)
-				let remoteStreamId = e.data.streamId
-				that.$refs['srsRtcPullApplyMic'].getPullSdp(remoteStreamId)
+				let remoteStreamId = e.data.streamId//
+				//或者在query单加一个remoteStreamId，用streamId表示源头id
+				//这里先写死一个remoteStreamId，这样两边就等同了
+				that.$refs['srsRtcPullApplyMic'].getPullSdp("3456")
 	  		}
 	  	})
 	  	this.linkSocket.on("error",(e)=>{
@@ -176,8 +178,7 @@ export default {
 			
 			//通过指定传输通道的方向，可以灵活地控制音频和视频在WebRTC连接中的传输行为。
 			//在这种情况下，代码表明创建的PeerConnection对象只用于将音频和视频数据发送给对等端，
-			//而不接收任何音频或视频数据。
-			//是一种对对方说明状态的行为
+			//而不接收任何音频或视频数据。是一种对对方说明状态的行为
 			that.pc.addTransceiver("audio", {direction: "sendonly"});
 			that.pc.addTransceiver("video", {direction: "sendonly"});
 			//总之，getTracks()方法用于获取MediaStream对象中的所有轨道，
@@ -219,9 +220,20 @@ export default {
 			})
 	   },
 
-	   //推流
+	   //拉流
 	   preLive(){
-		   this.$refs['srsRtcPullPreview'].getPullSdp(this.streamId)
+			if(this.streamId ==="3456"){
+				this.$refs['srsRtcPullPreview'].getPullSdp("3456");
+
+			}else{
+				this.$refs['srsRtcPullPreview'].getPullSdp(this.streamId)
+			}
+
+
+		   //this.$refs['srsRtcPullPreview'].getPullSdp(this.streamId)
+
+			
+
 	   },
 
 	   //视频控制
